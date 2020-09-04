@@ -5,8 +5,9 @@ from xmltodict3 import XmlTextToDict
 from datetime import datetime
 from nmap3 import Nmap
 
+# TODO: Add logic to dump CSV output to console (--out -)
 # TODO: Customize argument parsing so errors are logged
-# TODO: Possibly change logic to scan host individually
+# TODO: ?> Change logic to scan host individually
 
 
 class HostInfo(object):
@@ -136,7 +137,7 @@ def get_info(host_dict: dict) -> HostInfo:
 
 # Initialize cmd-line arguments parser and arguments
 parser = argparse.ArgumentParser(
-    prog="sslmap.py",
+    prog="sslmap",
     description="python 3 SSL strength grader",
     usage="sslmap.py [-h] [-v] [-o OUT] [-p PORT] TARGET"
 )
