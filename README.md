@@ -4,7 +4,7 @@ Python 3 - Scan network targets with Nmap to determine SSL cipher strengths.
 
 ## Arguments
 
-| Argument         | Type         | Description              | Default Value(s) |
+| Argument         | Type         | Description              | Defaults         |
 |:----------------:|:------------:|:------------------------:|:----------------:|
 | `TARGET`         | *Positional* | Nmap scan target(s)      | *N/A*            |
 | `-h, --help`     | *Optional*   | Display help menu        | *False*          |
