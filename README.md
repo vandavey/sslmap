@@ -42,7 +42,7 @@ sslmap.py --help
   sslmap.py 192.168.1.0/24
   ```
 
-* Scan multiple targets hosts at once:
+* Scan multiple target hosts at once:
 
   ```bat
   sslmap.py 192.168.1.1 10.0.0.53
@@ -50,15 +50,7 @@ sslmap.py --help
 
 ### Advanced Scans
 
-* Specify custom target port(s) to scan:
-
-  ```bat
-  sslmap.py -p 80,443 192.168.1.1
-  ```
-
-  > *Note*: for multiple ports, join each port with a comma (*no spaces*).
-
-* Display verbose console output during scan:
+* Display verbose console output:
 
   ```bat
   sslmap.py -v 192.168.1.1
@@ -66,17 +58,25 @@ sslmap.py --help
 
   > *Note*: `--verbose` option has no effect if the program is run as a task.
 
+* Specify custom target port(s):
+
+  ```bat
+  sslmap.py -p 80,443 192.168.1.1
+  ```
+
+  > *Note*: for multiple ports, join each port with a comma (*no spaces*).
+
 * Output CSV results to custom file path:
 
   ```bat
-  sslmap.py -o C:\OutputDir\scan_output.csv
+  sslmap.py -o C:\scan_data.csv 192.168.1.1
   ```
 
   > *Note*: If file is found at `OUT` file path, the new records will be appended.
 
 ## Run as Task
 
-To run the program as an automated task, use the built-in *Windows Task Scheduler*.
+To run ***sslmap*** as an automated task, use the built-in *Windows Task Scheduler*.
 
 1. Launch *Windows Task Scheduler* (taskschd.msc).
 2. Select *Create Task* from the *Actions* pane on the right.
