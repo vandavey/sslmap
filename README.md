@@ -4,18 +4,17 @@ Python 3 - Scan network targets with Nmap to determine SSL cipher strengths.
 
 ## Arguments
 
-| Argument         | Type         | Description              | Defaults         |
-|:----------------:|:------------:|:------------------------:|:----------------:|
-| `TARGET`         | *Positional* | Nmap scan target(s)      | *N/A*            |
-| `-h, --help`     | *Optional*   | Display help menu        | *False*          |
-| `-v, --verbose`  | *Optional*   | Display console output   | *False*          |
-| `-o/--out OUT`   | *Optional*   | File path for CSV output | *scan.csv*       |
-| `-p/--port PORT` | *Optional*   | Nmap scan target port(s) | *443, 8443*      |
+| Argument             | Type       | Description              | Defaults    |
+|:--------------------:|:----------:|:------------------------:|:-----------:|
+| `TARGET`             | *Required* | Nmap scan target(s)      | *N/A*       |
+| `-p/--port PORT`     | *Optional* | Nmap scan target port(s) | *443, 8443* |
+| `-o/--output OUTPUT` | *Optional* | File path for CSV output | *scan.csv*  |
+| `-h, --help`         | *Optional* | Display help menu        | *False*     |
 
 ## Basic Usage
 
 ```bat
-sslmap.py [-h] [-v] [-o OUT] [-p PORT] TARGET
+sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET
 ```
 
 ## Usage Examples
@@ -32,47 +31,47 @@ sslmap.py --help
 
 * Scan a single IPv4 address:
 
-  ```bat
-  sslmap.py 192.168.1.1
-  ```
+    ```bat
+    sslmap.py 192.168.1.1
+    ```
 
 * Scan an entire IPv4 address range:
   
-  ```bat
-  sslmap.py 192.168.1.0/24
-  ```
+    ```bat
+    sslmap.py 192.168.1.0/24
+    ```
 
 * Scan multiple target hosts at once:
 
-  ```bat
-  sslmap.py 192.168.1.1 10.0.0.53
-  ```
+    ```bat
+    sslmap.py 192.168.1.1 10.0.0.53
+    ```
 
 ### Advanced Scans
 
-* Display verbose console output:
-
-  ```bat
-  sslmap.py -v 192.168.1.1
-  ```
-
-  > *Note*: `--verbose` option has no effect if the program is run as a task.
-
 * Specify custom target port(s):
 
-  ```bat
-  sslmap.py -p 80,443 192.168.1.1
-  ```
+    ```bat
+    sslmap.py -p 80,443 192.168.1.1
+    ```
 
-  > *Note*: for multiple ports, join each port with a comma (*no spaces*).
+    > *Note*: For multiple ports, join each port with a comma (*no spaces*)
 
-* Output CSV results to custom file path:
+* Write CSV data to custom file path:
 
-  ```bat
-  sslmap.py -o C:\scan_data.csv 192.168.1.1
-  ```
+    ```bat
+    sslmap.py -o C:\scan_data.csv 192.168.1.1
+    ```
 
-  > *Note*: If file is found at `OUT` file path, the new records will be appended.
+    > *Note*: New data will be appended if file exists at `<OUTPUT>`
+
+* Dump CSV data to console standard output:
+
+    ```bat
+    sslmap.py --output -
+    ```
+
+    > *Note*: No data is written to file when `<OUTPUT>` *equals* `-`
 
 ## Run as Task
 
@@ -97,4 +96,6 @@ The following packages are required to use ***sslmap***:
   * [python3-nmap](https://pypi.org/project/python3-nmap/)
   * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
-*Note:* Once [Python](https://www.python.org/downloads/) and [Nmap](https://nmap.org/download.html) are installed, ensure the executable file locations are added to the local environment path. It is also helpful to place the file `sslmap.py` on the environment path.
+*Note:* Once [Python](https://www.python.org/downloads/) and [Nmap](https://nmap.org/download.html)
+are installed, ensure the executable parent directories are added to the local environment path.
+It is also helpful to place `sslmap.py` on environment the path.
