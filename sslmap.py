@@ -5,37 +5,44 @@ from xmltodict3 import XmlTextToDict
 from datetime import datetime
 from nmap3 import Nmap
 
-# TODO: Run Nmap process manually so stderr can be redirected
-# TODO: Possibly change logic to scan host individually
+# TODO: Add logic to dump CSV output to console (--out -)
+# TODO: Customize argument parsing so errors are logged
+# TODO: ?> Change logic to scan host individually
 
 
 class HostInfo(object):
     """Class to store scan data specific to each target host"""
-    def __init__(self, name_info, ip_info, time_stamps):
-        if type(name_info) is list:
-            self.HostName = name_info[0]["@name"]
-        else:
-            self.HostName = name_info["@name"]
-
-        ip_items = ip_info if (type(ip_info) is list) else [ip_info]
-        for item in ip_items:
-            if item["@addrtype"] == "ipv4":
-                self.IPAddress = item["@addr"]
-                break
-
-        self.StartTime = self.to_datetime(time_stamps[0])
-        self.EndTime = self.to_datetime(time_stamps[1])
+    def __init__(self, ip_info, time_stamps, name_info):
+        self.IPAddress = self.get_addr(ip_info)
+        self.StartTime, self.EndTime = self.get_times(time_stamps)
+        self.Name = self.get_name(name_info)
         self.URL = None
         self.PortList = []
 
     @staticmethod
-    def to_datetime(stamp: str) -> str:
-        """Convert Unix epoch timestamp into datetime string"""
+    def get_addr(info) -> str:
+        """Get the IPv4 address given a dictionary or list"""
+        items = info if (type(info) is list) else [info]
+        for item in items:
+            if item["@addrtype"] == "ipv4":
+                return item["@addr"]
+
+    @staticmethod
+    def get_times(stamps: tuple) -> tuple:
+        """Convert Unix epoch times to date-time strings"""
         global date_fmt
-        try:
-            return datetime.fromtimestamp(int(stamp)).strftime(date_fmt)
-        except Exception as stamp_ex:
-            log_ex(stamp_ex)
+        return (
+            datetime.fromtimestamp(int(stamps[0])).strftime(date_fmt),
+            datetime.fromtimestamp(int(stamps[1])).strftime(date_fmt)
+        )
+
+    @staticmethod
+    def get_name(info) -> str:
+        """Get the host name given a dictionary or list"""
+        if type(info) is list:
+            return info[0]["@name"]
+        else:
+            return info["@name"]
 
     def to_csv(self) -> str:
         """Format and return host info as CSV record entries"""
@@ -44,7 +51,7 @@ class HostInfo(object):
             records.append("|".join([
                 f'"{self.IPAddress}"',
                 f'"{port_num}"',
-                f'"{self.HostName}"',
+                f'"{self.Name}"',
                 f'"{self.URL}"',
                 f'"{strength}"',
                 f'"{self.StartTime}"',
@@ -53,23 +60,26 @@ class HostInfo(object):
         return "\n".join(records).replace("None", "")
 
 
-def log_error(msg: str) -> None:
+def log_error(error) -> None:
     """Append specified error string or exception to log file"""
-    global log_path, logger, parser
-    print(f"[x] {msg} (see {log_path.name} for full details)")
-    logger.error(msg)
+    global logger, log_path, verbose
+    if verbose:
+        print(f"[x] {error} (see {log_path} for full details)")
+    logger.error(error)
     exit(1)
 
 
-def log_arg(arg_name: str, msg: str) -> None:
-    """Log errors caused by invalid cmd-line arguments"""
-    print(f"usage: {parser.usage}")
-    log_error(f'ARGUMENT <{arg_name}>, "{msg}"')
+def run_scan(addr: str) -> str:
+    """Run the scan on the specified target. Return the
+    XML scan output as a string to be parsed"""
+    global scan_args, verbose
+    if verbose:
+        print("[*] Beginning scan, this could take a while...")
 
-
-def log_ex(exc: Exception) -> None:
-    """Log errors caused by unhandled exceptions"""
-    log_error(f'EXCEPTION <{type(exc).__name__}>, "{exc.args}"')
+    try:
+        return Nmap().run_command(f"nmap {' '.join(scan_args)} {addr}")
+    except Exception as scan_ex:
+        log_error(scan_ex)
 
 
 def parse_xml(xml: str) -> list:
@@ -77,7 +87,7 @@ def parse_xml(xml: str) -> list:
     host_list = []
     xml = xml.replace("\r", "").replace("\n", "")
 
-    # Tag count determines iteration count
+    # Iteration count is determined by 'host' tag count
     for i in range(xml.count("</host>")):
         start = xml.find("<host")
         end = xml.find("</host>") + len("</host>")
@@ -91,12 +101,11 @@ def parse_xml(xml: str) -> list:
 def get_info(host_dict: dict) -> HostInfo:
     """Extract information from host XML dictionaries"""
     host_info = HostInfo(
-        host_dict["hostnames"]["hostname"],
         host_dict["address"],
-        (
-            host_dict["@starttime"], host_dict["@endtime"]
-        )
+        (host_dict["@starttime"], host_dict["@endtime"]),
+        host_dict["hostnames"]["hostname"]
     )
+
     pinfo = host_dict["ports"]["port"]
     port_list = pinfo if (type(pinfo) is list) else [pinfo]
 
@@ -128,26 +137,29 @@ def get_info(host_dict: dict) -> HostInfo:
 
 # Initialize cmd-line arguments parser and arguments
 parser = argparse.ArgumentParser(
-    prog="sslmap.py",
+    prog="sslmap",
     description="python 3 SSL strength grader",
-    usage="sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET"
+    usage="sslmap.py [-h] [-v] [-o OUT] [-p PORT] TARGET"
 )
 
 parser.add_argument(
-    "TARGET", type=str, nargs="*",
+    "TARGET", type=str, nargs="+",  # At least one argument
     help="specify the nmap scan target(s)"
 )
 
 parser.add_argument(
-    "-o", "--output", type=str, nargs="?",
-    help="specify file path for CSV output data",
-    default=(Path.cwd() / "scan.csv")
+    "-v", "--verbose", action="store_true",
+    help="display console output for debugging"
 )
 
 parser.add_argument(
-    "-p", "--port", type=str, nargs="?",
-    help="specify the scan target port(s)",
-    default="443,8443"
+    "-o", "--out", type=str, default=(Path.cwd() / "scan.csv"),
+    help="specify file path for CSV output data"
+)
+
+parser.add_argument(
+    "-p", "--port", type=str, default="443,8443",
+    help="specify the scan target port(s)"
 )
 
 # Parse cmd-line arguments
@@ -155,8 +167,9 @@ args = parser.parse_args()
 
 # Initialize global variables
 target = list(args.TARGET)
-csv_path = None if (args.output is None) else Path(args.output)
-ports = None if (args.port is None) else str(args.port)
+verbose = bool(args.verbose)
+ports = str(args.port)
+csv_path = Path(args.out)
 
 log_path = Path.cwd() / "errors.log"
 date_fmt = "%m/%d/%Y %I:%M:%S %p"
@@ -167,20 +180,18 @@ header = "|".join((
     '"Strength"', '"StartTime"', '"EndTime"'
 ))
 
-# Nmap scan parameters
+# Scan parameters to pass to Nmap
 scan_args = [
-    "-sT", "-Pn",  # TCP connect (skip discovery)
-    "-oX", "-",  # Output results as XML
-    "-p", ports,  # Target port(s)
+    "-sT", "-Pn", "-oX", "-", "-p", ports,
     "--script", "ssl-cert,ssl-enum-ciphers"
 ]
 
-# Initialize error logger
+# Initialize error logger to debug scheduled runs
 logger = logging.getLogger("errors")
 logger.setLevel(logging.ERROR)
 handler = logging.FileHandler("errors.log", "a")
 
-# Customize logger formatting
+# Change the logger format style
 handler.setFormatter(logging.Formatter(
     fmt="[%(asctime)s] %(levelname)s: %(message)s",
     datefmt=date_fmt
@@ -188,61 +199,44 @@ handler.setFormatter(logging.Formatter(
 
 logger.addHandler(handler)
 
-# Primary entry point
+# Program entry point
 if __name__ == "__main__":
-    if len(target) == 0:
-        log_arg("TARGET", "At least one value is required")
-
-    if ports is None:
-        log_arg("PORT", "An argument value is required")
-
     # Validate port(s) parsed from cmd-line
     for port in ports.split(","):
         if not port.isdigit():
-            log_arg("PORT", f"{port} is not an integer")
+            log_error(f"{port} is not an integer")
         elif not (0 <= int(port) <= 65535):
-            log_arg("PORT", f"Invalid port number {port}")
+            log_error(f"Invalid port number {port}")
 
-    # Validate CSV output path
-    if csv_path is None:
-        log_arg("OUTPUT", "An argument value is required")
-    elif not csv_path.parent.exists():
-        log_arg("OUTPUT", f"Invalid parent path {csv_path.parent}")
+    if not csv_path.parent.exists():
+        log_error(f"Invalid parent path {csv_path.parent}")
 
-    if str(csv_path) != "-":
-        csv_path.touch()
-        csv_lines = csv_path.read_text().split("\n")
+    # Create the CSV file if not found
+    csv_path.touch()
+    csv_lines = csv_path.read_text().splitlines()
 
-        # Add CSV field header to file if missing
-        if len(csv_lines) == 0:
-            csv_path.write_text(header + "\n")
-        elif csv_lines[0] != header:
-            csv_path.write_text("\n".join([header, *csv_lines]))
-
-    print("[*] Beginning scan, this could take a while...")
-    command = f"nmap {' '.join(scan_args)} {' '.join(target)}"
+    # Add CSV field header to file if missing
+    if len(csv_lines) == 0:
+        csv_path.write_text(header + "\n")
+    elif csv_lines[0] != header:
+        csv_path.write_text("\n".join([header, *csv_lines]))
 
     raw_xml = ""
     try:
-        raw_xml = Nmap().run_command(command)
-    except Exception as nm_ex:
-        log_ex(nm_ex)
+        raw_xml = run_scan(" ".join(target))
+    except Exception as ex:
+        log_error(ex)
 
     raw_xml = raw_xml.replace("\r", "").replace("\n", "")
     host_strings = parse_xml(raw_xml)
 
-    if str(csv_path) == "-":
-        print(header)
-
     # For each XML string, parse host data and append to CSV
     for host_xml in host_strings:
         info_dict = XmlTextToDict(host_xml).get_dict()["host"]
-        new_line = get_info(info_dict).to_csv()
 
-        if str(csv_path) != "-":
-            with csv_path.open("a") as csv:
-                csv.write(new_line + "\n")
-        else:
-            print(new_line)
+        with csv_path.open("a") as csv:
+            new_line = get_info(info_dict).to_csv()
+            csv.write(new_line + "\n")
 
-    print("[*] SSL scan completed successfully")
+    if verbose:
+        print("[*] SSL scan completed successfully")
