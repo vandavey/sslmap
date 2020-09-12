@@ -1,15 +1,6 @@
-# sslmap
+# SSLMap
 
-Python 3 - Scan network targets with Nmap to determine SSL cipher strengths.
-
-## Arguments
-
-| Argument             | Type       | Description              | Defaults    |
-|:--------------------:|:----------:|:------------------------:|:-----------:|
-| `TARGET`             | *Required* | Nmap scan target(s)      | *N/A*       |
-| `-p/--port PORT`     | *Optional* | Nmap scan target port(s) | *443, 8443* |
-| `-o/--output OUTPUT` | *Optional* | File path for CSV output | *scan.csv*  |
-| `-h, --help`         | *Optional* | Display help menu        | *False*     |
+Python3 - Scan network targets with Nmap to determine SSL cipher strengths.
 
 ## Basic Usage
 
@@ -17,11 +8,24 @@ Python 3 - Scan network targets with Nmap to determine SSL cipher strengths.
 sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET
 ```
 
+## Available Arguments
+
+All available **sslmap** command-line arguments are listed below:
+
+| Arguments            | Type       | Description              | Defaults    |
+|:--------------------:|:----------:|:------------------------:|:-----------:|
+| `TARGET`             | *Required* | Nmap scan target(s)      | *N/A*       |
+| `-p/--port PORT`     | *Optional* | Nmap scan target port(s) | *443, 8443* |
+| `-o/--output OUTPUT` | *Optional* | File path for CSV output | *scan.csv*  |
+| `-h, --help`         | *Optional* | Display help menu        | *False*     |
+
+***
+
 ## Usage Examples
 
 ### Display Help
 
-Display the program help menu, then exit.
+Display the program help menu, then exit:
 
 ```bat
 sslmap.py --help
@@ -47,7 +51,7 @@ sslmap.py --help
     sslmap.py 192.168.1.1 10.0.0.53
     ```
 
-### Advanced Scans
+### Custom Scans
 
 * Specify custom target port(s):
 
@@ -71,11 +75,13 @@ sslmap.py --help
     sslmap.py --output -
     ```
 
-    > *Note*: No data is written to file when `<OUTPUT>` *equals* `-`
+    > *Note*: Only **sslmap** errors be logged when `<OUTPUT>` *equals* `-`
+
+***
 
 ## Run as Task
 
-To run ***sslmap*** as an automated task, use the built-in *Windows Task Scheduler*.
+To run **sslmap** as an automated task, use the built-in *Windows Task Scheduler*.
 
 1. Launch *Windows Task Scheduler* (taskschd.msc).
 2. Select *Create Task* from the *Actions* pane on the right.
@@ -87,15 +93,16 @@ To run ***sslmap*** as an automated task, use the built-in *Windows Task Schedul
 8. Add any additional execution arguments in the *Add arguments* field.
 9. Click *OK* to confirm the *Action* options, then click *OK* again to save the task.
 
+***
+
 ## Project Dependencies
 
-The following packages are required to use ***sslmap***:
+The following packages are required to use **sslmap**:
 
 * [Nmap](https://nmap.org/download.html)
 * [Python3](https://www.python.org/downloads/)
-  * [python3-nmap](https://pypi.org/project/python3-nmap/)
   * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
 *Note:* Once [Python](https://www.python.org/downloads/) and [Nmap](https://nmap.org/download.html)
-are installed, ensure the executable parent directories are added to the local environment path.
-It is also helpful to place `sslmap.py` on environment the path.
+are installed, ensure the executable parent directories are added to the local environment path
+(it's also helpful to place `sslmap.py` on the environment path).
