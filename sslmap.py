@@ -1,12 +1,12 @@
 import logging
 import argparse
+import shutil
+import subprocess
 from pathlib import Path
 from xmltodict3 import XmlTextToDict
 from datetime import datetime
-from nmap3 import Nmap
 
-# TODO: Run Nmap process manually so stderr can be redirected
-# TODO: Possibly change logic to scan host individually
+# TODO: Split CIDR blocks larger than a.b.c.d/24 prior to scan
 
 
 class HostInfo(object):
@@ -30,12 +30,9 @@ class HostInfo(object):
 
     @staticmethod
     def to_datetime(stamp: str) -> str:
-        """Convert Unix epoch timestamp into datetime string"""
+        """Convert Unix epoch timestamp to datetime string"""
         global date_fmt
-        try:
-            return datetime.fromtimestamp(int(stamp)).strftime(date_fmt)
-        except Exception as stamp_ex:
-            log_ex(stamp_ex)
+        return datetime.fromtimestamp(int(stamp)).strftime(date_fmt)
 
     def to_csv(self) -> str:
         """Format and return host info as CSV record entries"""
@@ -53,31 +50,60 @@ class HostInfo(object):
         return "\n".join(records).replace("None", "")
 
 
-def log_error(msg: str) -> None:
-    """Append specified error string or exception to log file"""
-    global log_path, logger, parser
-    print(f"[x] {msg} (see {log_path.name} for full details)")
-    logger.error(msg)
-    exit(1)
+def log_error(error_msg: str, terminate: bool) -> None:
+    """Append error to log file and exit (optional)"""
+    global logger
+    print(f"[x] {error_msg} (see errors.log for full details)")
+    logger.error(error_msg)
+    if terminate:
+        exit(1)
 
 
-def log_arg(arg_name: str, msg: str) -> None:
+def log_argument(arg_name: str, msg: str) -> None:
     """Log errors caused by invalid cmd-line arguments"""
+    global parser
     print(f"usage: {parser.usage}")
-    log_error(f'ARGUMENT <{arg_name}>, "{msg}"')
+    log_error(f"ARGUMENT <{arg_name}>, '{msg}'", terminate=True)
 
 
-def log_ex(exc: Exception) -> None:
+def log_ex(exc, close: bool = True) -> None:
     """Log errors caused by unhandled exceptions"""
-    log_error(f'EXCEPTION <{type(exc).__name__}>, "{exc.args}"')
+    if Exception in type(exc).mro():
+        msg = f"EXCEPTION <{type(exc).__name__}>, '{exc.args[0]}'"
+    else:
+        msg = f"EXCEPTION <{exc[0]}>, '{exc[1]}'"
+    log_error(msg, terminate=close)
+
+
+def run_scan(nm_args: list) -> str:
+    """Execute Nmap scan and return the process output"""
+    nm_stats = None
+    try:
+        nm_stats = subprocess.run(
+            args=nm_args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8"
+        )
+    except Exception as nm_ex:
+        log_ex(nm_ex, close=True)
+
+    # Don't exit on error (following Nmap behavior)
+    if nm_stats.stderr != "":
+        for error in nm_stats.stderr.splitlines():
+            nm_error = error[:-1].split(": ")  # Split label and msg
+            if nm_error[0] == "WARNING":
+                print(f"[!] NMAP: {nm_error[1]}")
+            else:
+                log_ex(("NmapScan", nm_error[0]), close=False)
+
+    return nm_stats.stdout.replace("\r", "").replace("\n", "")
 
 
 def parse_xml(xml: str) -> list:
     """Parse each host XML string out of raw XML data"""
     host_list = []
-    xml = xml.replace("\r", "").replace("\n", "")
-
-    # Tag count determines iteration count
     for i in range(xml.count("</host>")):
         start = xml.find("<host")
         end = xml.find("</host>") + len("</host>")
@@ -104,10 +130,10 @@ def get_info(host_dict: dict) -> HostInfo:
     for item in port_list:
         strength = None
 
-        # Skip if no NSE scripts were used
+        # Skip if no NSE scan data's available
         if "script" in item.keys():
             for script in item["script"]:
-                lines = script["@output"].replace(",", "").split("\n")
+                lines = script["@output"].replace(",", "").splitlines()
 
                 if script["@id"] == "ssl-cert":
                     names = lines[1].split()
@@ -120,7 +146,7 @@ def get_info(host_dict: dict) -> HostInfo:
                             host_info.URL = url
                             break
                 elif script["@id"] == "ssl-enum-ciphers":
-                    strength = lines[-1][-1]
+                    strength = lines[-1][-1]  # Last char of last line
 
         host_info.PortList.append((item["@portid"], strength))
     return host_info
@@ -129,8 +155,8 @@ def get_info(host_dict: dict) -> HostInfo:
 # Initialize cmd-line arguments parser and arguments
 parser = argparse.ArgumentParser(
     prog="sslmap.py",
-    description="python 3 SSL strength grader",
-    usage="sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET"
+    usage="sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET",
+    description="SSL cipher strength grader (python3)"
 )
 
 parser.add_argument(
@@ -158,8 +184,18 @@ target = list(args.TARGET)
 csv_path = None if (args.output is None) else Path(args.output)
 ports = None if (args.port is None) else str(args.port)
 
-log_path = Path.cwd() / "errors.log"
-date_fmt = "%m/%d/%Y %I:%M:%S %p"
+# Resolve relative CSV path if applicable
+if csv_path is not None:
+    if (csv_path.anchor == "") & (csv_path.name != "-"):
+        csv_path = (Path.cwd() / csv_path).resolve()
+    else:
+        csv_path = csv_path.resolve()
+
+# Place error log with CSV file
+if (csv_path is not None) & (csv_path.parent.exists()):
+    log_path = (csv_path.parent / "errors.log").resolve()
+else:
+    log_path = Path.cwd() / "errors.log"
 
 # Default CSV file header
 header = "|".join((
@@ -167,18 +203,19 @@ header = "|".join((
     '"Strength"', '"StartTime"', '"EndTime"'
 ))
 
-# Nmap scan parameters
-scan_args = [
-    "-sT", "-Pn",  # TCP connect (skip discovery)
-    "-oX", "-",  # Output results as XML
-    "-p", ports,  # Target port(s)
+# Nmap (TCP connect) scan parameters
+nm_params = (
+    "-sT", "-Pn", "-oX", "-", "-p", ports,
     "--script", "ssl-cert,ssl-enum-ciphers"
-]
+)
+
+# Datetime string format
+date_fmt = "%m/%d/%Y %I:%M:%S %p"
 
 # Initialize error logger
 logger = logging.getLogger("errors")
 logger.setLevel(logging.ERROR)
-handler = logging.FileHandler("errors.log", "a")
+handler = logging.FileHandler(log_path, "a")
 
 # Customize logger formatting
 handler.setFormatter(logging.Formatter(
@@ -191,59 +228,70 @@ logger.addHandler(handler)
 # Primary entry point
 if __name__ == "__main__":
     if len(target) == 0:
-        log_arg("TARGET", "At least one value is required")
+        log_argument("TARGET", "At least one value is required")
 
     if ports is None:
-        log_arg("PORT", "An argument value is required")
+        log_argument("PORT", "An argument value is required")
 
     # Validate port(s) parsed from cmd-line
     for port in ports.split(","):
         if not port.isdigit():
-            log_arg("PORT", f"{port} is not an integer")
+            log_argument("PORT", f"{port} is not an integer")
         elif not (0 <= int(port) <= 65535):
-            log_arg("PORT", f"Invalid port number {port}")
+            log_argument("PORT", f"Invalid port number {port}")
 
     # Validate CSV output path
     if csv_path is None:
-        log_arg("OUTPUT", "An argument value is required")
+        log_argument("OUTPUT", "An argument value is required")
     elif not csv_path.parent.exists():
-        log_arg("OUTPUT", f"Invalid parent path {csv_path.parent}")
+        log_argument("OUTPUT", f"Invalid parent path {csv_path.parent}")
+
+    # Locate Nmap executable file
+    exec_path = shutil.which("nmap")
+    if exec_path is None:
+        log_ex(("NmapPath", "Unable to locate Nmap executable"))
 
     # Skip if CSV output target is console stdout
-    if str(csv_path) != "-":
+    if csv_path.name != "-":
         csv_path.touch()
-        csv_lines = csv_path.read_text().split("\n")
+        csv_lines = csv_path.read_text().splitlines()
 
         # Add CSV field header to file if missing
         if len(csv_lines) == 0:
             csv_path.write_text(header + "\n")
         elif csv_lines[0] != header:
-            csv_path.write_text("\n".join([header, *csv_lines]))
+            csv_path.write_text("\n".join([header, *csv_lines, ""]))
 
     print("[*] Beginning scan, this could take a while...")
-    command = f"nmap {' '.join(scan_args)} {' '.join(target)}"
+    raw_xml = run_scan([exec_path, *nm_params, *target])
 
-    raw_xml = ""
-    try:
-        raw_xml = Nmap().run_command(command)
-    except Exception as nm_ex:
-        log_ex(nm_ex)
-
-    raw_xml = raw_xml.replace("\r", "").replace("\n", "")
     host_strings = parse_xml(raw_xml)
+    host_count = len(host_strings)
 
-    if str(csv_path) == "-":
-        print(header)
+    # Format and print CSV field names
+    if (host_count != 0) & (csv_path.name == "-"):
+        heading = header.replace('"', "")
+        heading = f"\n{heading}\n" + ("-" * len(heading))
+        print(heading)
 
     # For each XML string, parse host data and append to CSV
     for host_xml in host_strings:
         info_dict = XmlTextToDict(host_xml).get_dict()["host"]
         new_line = get_info(info_dict).to_csv()
 
-        if str(csv_path) != "-":
+        if csv_path.name != "-":
             with csv_path.open("a") as csv:
                 csv.write(new_line + "\n")
         else:
-            print(new_line)
+            print(new_line.replace('"', ""))
 
-    print("[*] SSL scan completed successfully")
+    exit_msg = ["[*] SSL scan completed"]
+
+    if host_count == 0:
+        exit_msg.append(f"    ERRORS => '{log_path}'")
+    elif (csv_path.name != "-") & (host_count > 0):
+        exit_msg.append(f"    OUTPUT => '{csv_path}'")
+    else:
+        exit_msg = ["", *exit_msg]
+
+    print(*exit_msg, sep="\n")
