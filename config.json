@@ -1,0 +1,20 @@
+{
+    "title": "config",
+    "options": {
+        "target": [],
+        "ports": "443,8443",
+        "resume": true,
+        "parent": null,
+        "fileNames": {
+            "upCsv": "scan_up.csv",
+            "downCsv": "scan_down.csv",
+            "errors": "errors.log"
+        }
+    },
+    "lastRunStats": {
+        "completed" : true,
+        "target": null,
+        "lastTarget": null,
+        "errors": null
+    }
+}

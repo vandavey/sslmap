@@ -1,7 +1,6 @@
 # Ignore the following file-types
 *.csv
 *.log
-*.json
 *.xml
 *.exe
 *.dll
