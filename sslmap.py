@@ -1,3 +1,4 @@
+import json
 import logging
 import argparse
 import shutil
@@ -6,16 +7,64 @@ from pathlib import Path
 from xmltodict3 import XmlTextToDict
 from datetime import datetime
 
-# TODO: Split CIDR blocks larger than a.b.c.d/24 prior to scan
+# TODO: Update README with new options/info
+# TODO: Implement logic to update config and resume scan
+# TODO: Finish config option implementation/debugging
+
+
+class LogHandler(object):
+    """Class to handle error logging operations"""
+    def __init__(self, log_path: Path):
+        """Initialize new LogHandler object"""
+        self.FilePath = log_path
+        handler = logging.FileHandler(log_path, "a")
+
+        handler.setFormatter(logging.Formatter(
+            fmt="[%(asctime)s.%(msecs)d] %(message)s",
+            datefmt=date_fmt
+        ))
+        self.Logger = logging.getLogger("errors")
+        self.Logger.addHandler(handler)
+        self.Logger.setLevel(logging.ERROR)
+
+    def _handle(self, error_msg: str, kill: bool) -> None:
+        """Protected helper method - append errors to log"""
+        print(f"[x] {error_msg} (see errors.log for full details)")
+        self.Logger.error(error_msg)
+        if kill:
+            exit(1)
+
+    def options(self, arg_name: str, msg: str) -> None:
+        """Log invalid cmd-line/config option errors"""
+        global parser
+        print(f"usage: {parser.usage}")
+        self._handle(f"ARGUMENT ({arg_name}): {msg}", kill=True)
+
+    def error(self, exc, close: bool = True) -> None:
+        """Log errors caused by unhandled exceptions"""
+        if Exception in type(exc).mro():
+            msg = f"EXCEPTION ({type(exc).__name__}): {exc.args[0]}"
+        else:
+            msg = f"EXCEPTION ({exc[0]}): {exc[1]}"
+        self._handle(msg, kill=close)
+
+    def update_config(self) -> None:
+        """Update config with scan statistics if it exists"""
+        raise NotImplementedError("Feature in development")
 
 
 class HostInfo(object):
     """Class to store scan data specific to each target host"""
     def __init__(self, name_info, ip_info, time_stamps):
-        if type(name_info) is list:
+        """Initialize new HostInfo object"""
+        name_type = type(name_info)
+
+        if name_type is list:
             self.HostName = name_info[0]["@name"]
-        else:
+        elif name_type is dict:
             self.HostName = name_info["@name"]
+        else:
+            self.HostName = None
 
         ip_items = ip_info if (type(ip_info) is list) else [ip_info]
         for item in ip_items:
@@ -34,11 +83,12 @@ class HostInfo(object):
         global date_fmt
         return datetime.fromtimestamp(int(stamp)).strftime(date_fmt)
 
-    def to_csv(self) -> str:
-        """Format and return host info as CSV record entries"""
+    def to_csv(self) -> list:
+        """Format and return host info as CSV record entries.
+        Each additional port adds an item to the list returned."""
         records = []
         for port_num, strength in self.PortList:
-            records.append("|".join([
+            records.append("|".join((
                 f'"{self.IPAddress}"',
                 f'"{port_num}"',
                 f'"{self.HostName}"',
@@ -46,37 +96,26 @@ class HostInfo(object):
                 f'"{strength}"',
                 f'"{self.StartTime}"',
                 f'"{self.EndTime}"'
-            ]))
-        return "\n".join(records).replace("None", "")
+            )))
+        # Remove the 'None' keyword from each CSV record
+        return [r.replace("None", "") for r in records]
 
 
-def log_error(error_msg: str, terminate: bool) -> None:
-    """Append error to log file and exit (optional)"""
-    global logger
-    print(f"[x] {error_msg} (see errors.log for full details)")
-    logger.error(error_msg)
-    if terminate:
-        exit(1)
+def null(test_obj: object) -> bool:
+    """Determine if the value of an object is null (None)"""
+    return test_obj is None
 
 
-def log_argument(arg_name: str, msg: str) -> None:
-    """Log errors caused by invalid cmd-line arguments"""
-    global parser
-    print(f"usage: {parser.usage}")
-    log_error(f"ARGUMENT <{arg_name}>, '{msg}'", terminate=True)
-
-
-def log_ex(exc, close: bool = True) -> None:
-    """Log errors caused by unhandled exceptions"""
-    if Exception in type(exc).mro():
-        msg = f"EXCEPTION <{type(exc).__name__}>, '{exc.args[0]}'"
-    else:
-        msg = f"EXCEPTION <{exc[0]}>, '{exc[1]}'"
-    log_error(msg, terminate=close)
+def get_headers(names: tuple) -> dict:
+    """Get CSV file header up/down hosts dictionary"""
+    return {
+        "up": "|".join(names),
+        "down": "|".join((*names[:4], *names[5:]))
+    }
 
 
 def run_scan(nm_args: list) -> str:
-    """Execute Nmap scan and return the process output"""
+    """Execute Nmap scan and return XML output data"""
     nm_stats = None
     try:
         nm_stats = subprocess.run(
@@ -87,7 +126,7 @@ def run_scan(nm_args: list) -> str:
             encoding="utf-8"
         )
     except Exception as nm_ex:
-        log_ex(nm_ex, close=True)
+        log.error(nm_ex, close=True)
 
     # Don't exit on error (replicate Nmap behavior)
     if nm_stats.stderr != "":
@@ -96,7 +135,7 @@ def run_scan(nm_args: list) -> str:
             if nm_error[0] == "WARNING":
                 print(f"[!] NMAP: {nm_error[1]}")
             else:
-                log_ex(("NmapScan", nm_error[0]), close=False)
+                log.error(("NmapScan", nm_error[0]), close=False)
 
     return nm_stats.stdout.replace("\r", "").replace("\n", "")
 
@@ -116,8 +155,10 @@ def parse_xml(xml: str) -> list:
 
 def get_info(host_dict: dict) -> HostInfo:
     """Extract information from host XML dictionaries"""
-    host_info = HostInfo(
-        host_dict["hostnames"]["hostname"],
+    names = host_dict["hostnames"]
+
+    info = HostInfo(
+        (None if null(names) else names["hostname"]),
         host_dict["address"],
         (
             host_dict["@starttime"], host_dict["@endtime"]
@@ -142,66 +183,112 @@ def get_info(host_dict: dict) -> HostInfo:
                     for name in names:
                         url = name.split(":")[1]
 
-                        if url != host_info.IPAddress:
-                            host_info.URL = url
+                        if url != info.IPAddress:
+                            info.URL = url
                             break
                 elif script["@id"] == "ssl-enum-ciphers":
                     strength = lines[-1][-1]  # Last char of last line
 
-        host_info.PortList.append((item["@portid"], strength))
-    return host_info
+        info.PortList.append((item["@portid"], strength))
+    return info
 
 
-# Initialize cmd-line arguments parser and arguments
+# Initialize cmd-line arguments parser
 parser = argparse.ArgumentParser(
-    prog="sslmap.py",
-    usage="sslmap.py [-h] [-o OUTPUT] [-p PORT] TARGET",
-    description="SSL cipher strength grader (python3)"
+    prog="sslmap.py", add_help=False,
+    usage="sslmap.py [-h] [-c CONFIG] [-o OUTPUT] [-p PORT] TARGET",
+    description="SSL cipher strength grader (python3)",
 )
 
 parser.add_argument(
+    "-h", "--help", action="store_true",
+    help="show this help message and exit"
+)
+
+parser.add_argument(
+    "-c", "--config", type=str, nargs="?",
+    help="specify the config file path to load",
+    default=(Path.cwd() / "config.json")
+)
+
+conf, opts, file_dict = (None, None, None)
+raw_path = parser.parse_known_args()[0].config
+
+# Parse config path and initialize variable
+if null(raw_path):
+    conf_path = (Path.cwd() / "config.json").resolve()
+else:
+    conf_path = Path(raw_path).resolve()
+
+use_conf = conf_path.exists()
+
+# Read file data and load as dictionary
+if use_conf:
+    with conf_path.open("r") as config:
+        json_lines = []
+        for line in config:
+            # Ignore comments
+            if not line.startswith("//"):
+                json_lines.append(line)
+        conf = "".join(json_lines)
+
+    opts = json.loads(conf)["options"]
+
+    # Combine file names and parent path
+    for key, val in opts["fileNames"].items():
+        if not null(opts["parent"]):
+            full_path = Path(opts["parent"]) / val
+        else:
+            full_path = Path.cwd() / val
+        # Update dictionary with absolute paths
+        opts["fileNames"].update({(key, full_path)})
+
+    file_dict = opts["fileNames"]
+
+parser.add_argument(
     "TARGET", type=str, nargs="*",
-    help="specify the nmap scan target(s)"
+    help="specify the nmap scan target(s)",
+    default=(opts["target"] if use_conf else [])
 )
 
 parser.add_argument(
     "-o", "--output", type=str, nargs="?",
-    help="specify file path for CSV output data",
-    default=(Path.cwd() / "scan.csv")
+    help="specify parent path for CSV output files",
+    default=(opts["parent"] if use_conf else Path.cwd())
 )
 
 parser.add_argument(
     "-p", "--port", type=str, nargs="?",
     help="specify the scan target port(s)",
-    default="443,8443"
+    default=(opts["ports"] if use_conf else "443,8443")
 )
 
 # Parse cmd-line arguments
 args = parser.parse_args()
 
-# Initialize global variables
+# Display help and exit
+if args.help:
+    parser.print_help()
+    exit(0)
+
 target = list(args.TARGET)
-csv_path = None if (args.output is None) else Path(args.output)
-ports = None if (args.port is None) else str(args.port)
+ports = None if null(args.port) else str(args.port)
+parent = Path.cwd() if null(args.output) else Path(args.output)
 
-# Resolve relative CSV path if applicable
-if csv_path is not None:
-    if (csv_path.anchor == "") & (csv_path.name != "-"):
-        csv_path = (Path.cwd() / csv_path).resolve()
-    else:
-        csv_path = csv_path.resolve()
+# Determine if CSV data will dump to console
+if parent.name == "-":
+    dump_csv = True
+    parent = Path.cwd()
 
-# Place error log with CSV file
-if (csv_path is not None) & (csv_path.parent.exists()):
-    log_path = (csv_path.parent / "errors.log").resolve()
+    if use_conf:
+        raw_path = opts["fileNames"]["errors"]
+        parent = Path(raw_path).parent.resolve()
 else:
-    log_path = Path.cwd() / "errors.log"
+    dump_csv = False
+    parent = parent.resolve()
 
-# Default CSV file header
-header = "|".join((
-    '"IPAddress"', '"Port"', '"HostName"', '"URL"',
-    '"Strength"', '"StartTime"', '"EndTime"'
-))
+# Datetime string format
+date_fmt = "%Y/%m/%d %H:%M:%S"
 
 # Nmap (TCP connect) scan parameters
 nm_params = (
@@ -209,58 +296,67 @@ nm_params = (
     "--script", "ssl-cert,ssl-enum-ciphers"
 )
 
-# Datetime string format
-date_fmt = "%m/%d/%Y %I:%M:%S %p"
-
-# Initialize error logger
-logger = logging.getLogger("errors")
-logger.setLevel(logging.ERROR)
-handler = logging.FileHandler(log_path, "a")
-
-# Customize logger formatting
-handler.setFormatter(logging.Formatter(
-    fmt="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt=date_fmt
+headers = get_headers((
+    '"IPAddress"', '"Port"', '"HostName"', '"DomainName"',
+    '"OverallRating"', '"StartTime"', '"EndTime"',
 ))
 
-logger.addHandler(handler)
+# Dictionary to store CSV file targets
+if file_dict is None:
+    dir_path = parent if parent.exists() else Path.cwd()
+    file_dict = {
+        "upCsv": (dir_path / "scan_up.csv"),
+        "downCsv": (dir_path / "scan_down.csv")
+    }
 
-# Primary entry point
+# Initialize the error log handler
+if parent.exists():
+    log = LogHandler(Path(parent / "errors.log").resolve())
+else:
+    log = LogHandler((Path.cwd() / "errors.log").resolve())
+
+# Main entry point (start user interactions)
 if __name__ == "__main__":
     if len(target) == 0:
-        log_argument("TARGET", "At least one value is required")
+        log.options("TARGET", "At least one value is required")
 
-    if ports is None:
-        log_argument("PORT", "An argument value is required")
+    if null(ports):
+        log.options("PORT", "An argument value is required")
 
     # Validate port(s) parsed from cmd-line
     for port in ports.split(","):
         if not port.isdigit():
-            log_argument("PORT", f"{port} is not an integer")
+            log.options("PORT", f"{port} is not an integer")
         elif not (0 <= int(port) <= 65535):
-            log_argument("PORT", f"Invalid port number {port}")
+            log.options("PORT", f"Invalid port number {port}")
 
-    # Validate CSV output path
-    if csv_path is None:
-        log_argument("OUTPUT", "An argument value is required")
-    elif not csv_path.parent.exists():
-        log_argument("OUTPUT", f"Invalid parent path {csv_path.parent}")
+    # Validate output directory file path
+    if dump_csv & (not parent.exists()):
+        log.options("OUTPUT", f"Invalid parent path {parent}")
 
     # Locate Nmap executable file
     exec_path = shutil.which("nmap")
     if exec_path is None:
-        log_ex(("NmapPath", "Unable to locate Nmap executable"))
+        log.error(("NmapPath", "Unable to locate Nmap executable"))
 
     # Skip if CSV output target is console stdout
-    if csv_path.name != "-":
-        csv_path.touch()
-        csv_lines = csv_path.read_text().splitlines()
+    if not dump_csv:
+        for key, path in file_dict.items():
+            if key == "upCsv":
+                header = headers["up"]
+            elif key == "downCsv":
+                header = headers["down"]
+            else:
+                continue  # Skip error log
 
-        # Add CSV field header to file if missing
-        if len(csv_lines) == 0:
-            csv_path.write_text(header + "\n")
-        elif csv_lines[0] != header:
-            csv_path.write_text("\n".join([header, *csv_lines, ""]))
+            path.touch()
+            csv_lines = path.read_text().splitlines()
+
+            # Add CSV field header to file if missing
+            if len(csv_lines) == 0:
+                path.write_text(header + "\n")
+            elif csv_lines[0] != header:
+                path.write_text("\n".join((header, *csv_lines, "")))
 
     print("[*] Beginning scan, this could take a while...")
     raw_xml = run_scan([exec_path, *nm_params, *target])
@@ -269,29 +365,42 @@ if __name__ == "__main__":
     host_count = len(host_strings)
 
     # Format and print CSV field names
-    if (host_count != 0) & (csv_path.name == "-"):
-        heading = header.replace('"', "")
+    if dump_csv & (host_count != 0):
+        heading = headers["up"].replace('"', "")
         heading = f"\n{heading}\n" + ("-" * len(heading))
         print(heading)
 
-    # For each XML string, parse host data and append to CSV
+    # Parse host data from each XML string
     for host_xml in host_strings:
-        info_dict = XmlTextToDict(host_xml).get_dict()["host"]
-        new_line = get_info(info_dict).to_csv()
+        info_dict = XmlTextToDict(host_xml).get_dict()
+        new_lines = get_info(info_dict["host"]).to_csv()
 
-        if csv_path.name != "-":
-            with csv_path.open("a") as csv:
-                csv.write(new_line + "\n")
-        else:
-            print(new_line.replace('"', ""))
+        for line in new_lines:
+            file_path = None
+            fields = line.split("|")
+            if dump_csv:
+                print(line.replace('"', ""))
+                continue  # Skip loop remainder
 
-    exit_msg = ["[*] SSL scan completed"]
+            # Remove strength field from inactive hosts
+            if fields[4] == '""':
+                file_path = Path(file_dict["downCsv"])
+                fields.pop(4)
+            else:
+                file_path = Path(file_dict["upCsv"])
 
+            # Append host info to CSV file
+            with file_path.open("a") as csv:
+                csv.write("|".join(fields) + "\n")
+
+    exit_msg = "[*] SSL scan completed"
+    banner = ["", exit_msg] if dump_csv else [exit_msg]
+
+    # Build and display exit banner
     if host_count == 0:
-        exit_msg.append(f"    ERRORS => '{log_path}'")
-    elif (csv_path.name != "-") & (host_count > 0):
-        exit_msg.append(f"    OUTPUT => '{csv_path}'")
-    else:
-        exit_msg = ["", *exit_msg]
+        banner.append(f"    ERRORS => '{log.FilePath}'")
+    elif not dump_csv:
+        banner.append(f"    OUTPUT[UP]: '{file_dict['upCsv']}'")
+        banner.append(f"    OUTPUT[DOWN]: '{file_dict['downCsv']}'")
 
-    print(*exit_msg, sep="\n")
+    print(*banner, sep="\n")
