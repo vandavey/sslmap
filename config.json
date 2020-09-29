@@ -1,25 +1,27 @@
-//  SSLMap Configuration File
-//  =========================
-//   URI: https://raw.githubusercontent.com/vandavey/sslmap/master/config.json
-//
-//  General Information
-//  -------------------
-//   *) To use the default options, DO NOT modify values in this file.
-//   *) Each value specified in this file will be evaluated at runtime
-//      unless overridden by a conflicting command-line argument.
-//   *) Only modify values belonging to the 'options' object.
-//   *) DO NOT modify existing keys or add any additional JSON objects.
-//   *) DO NOT manually modify the 'lastRunStats' object keys/values.
-//
-//  Option Information
-//  ------------------
-//   target     <array>      Nmap scan target hosts or addresses
-//   port       <string>     Target port(s) separated by commas (no spaces)
-//   resume     <boolean>    Resume scan from the last completed target
-//   parent     <string>     Parent directory for CSV files and error log
-//   upCsv      <string>     CSV file name for active scan targets
-//   downCsv    <string>     CSV file name for inactive scan targets
-//   errors     <string>     File name for the SSLMap error log
+/*
+ SSLMap Configuration File
+ =========================
+  URI: https:raw.githubusercontent.com/vandavey/sslmap/master/config.json
+
+ General Information
+ -------------------
+  *) To use the default options, DO NOT modify values in this file.
+  *) Each value specified in this file will be evaluated at runtime
+     unless overridden by a conflicting command-line argument.
+  *) Only modify values belonging to the 'options' object.
+  *) DO NOT modify existing keys or add any additional JSON objects.
+  *) DO NOT manually modify the 'lastRunStats' object keys/values.
+
+ Option Information
+ ------------------
+  target     <array>      Nmap scan target hosts or addresses
+  port       <string>     Target port(s) separated by commas (no spaces)
+  resume     <boolean>    Resume scan from the last completed target
+  parent     <string>     Parent directory for CSV files and error log
+  upCsv      <string>     CSV file name for active scan targets
+  downCsv    <string>     CSV file name for inactive scan targets
+  errors     <string>     File name for the SSLMap error log
+*/
 {
     "title": "config",
     "options": {
