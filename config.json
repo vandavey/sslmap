@@ -1,16 +1,17 @@
 /*
- SSLMap Configuration File
- =========================
+ SSLMap Configuration
+ ====================
   URI: https:raw.githubusercontent.com/vandavey/sslmap/master/config.json
 
  General Information
  -------------------
-  *) To use the default options, DO NOT modify values in this file.
-  *) Each value specified in this file will be evaluated at runtime
+  *) To use the default options, DO NOT modify any objects in this file.
+  *) DO NOT manually modify any values outside of the "options" object.
+  *) All JSON values specified in this file will be evaluated at runtime,
      unless overridden by a conflicting command-line argument.
-  *) Only modify values belonging to the 'options' object.
-  *) DO NOT modify existing keys or add any additional JSON objects.
-  *) DO NOT manually modify the 'lastRunStats' object keys/values.
+  *) Comments defined inside of the JSON data ({...}) will NOT be restored.
+  *) JSON block comments (/*...) are allowed. Inline JSON comments (//...)
+     should be avoided, as they may lead to runtime parsing errors.
 
  Option Information
  ------------------

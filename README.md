@@ -62,6 +62,14 @@ sslmap.py --help
 
     > *Note*: For multiple ports, join each port with a comma (*no spaces*)
 
+* Write CSV data to custom file path:
+
+    ```bat
+    sslmap.py -o C:\scan_data.csv 192.168.1.1
+    ```
+
+    > *Note*: New data will be appended if file exists at `<OUTPUT>`
+
 * Dump CSV data to console standard output:
 
     ```bat
@@ -105,7 +113,7 @@ The following packages are required to use **sslmap**:
 * [Python3](https://www.python.org/downloads/)
   * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
-*Note:* Once [Python](https://www.python.org/downloads/) and [Nmap](https://nmap.org/download.html)
-are installed, ensure the executable parent directories are added to the local environment path.
-The `sslmap.py` parent directory should also be added to the environment path.
-
+*Note:* Once [Python](https://www.python.org/downloads/) and
+[Nmap](https://nmap.org/download.html) are installed, ensure the executable
+parent directories are added to the local environment path. The `sslmap.py`
+parent directory should also be added to the local environment path.
