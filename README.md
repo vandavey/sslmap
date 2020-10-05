@@ -111,6 +111,7 @@ The following packages are required to use **sslmap**:
 
 * [Nmap](https://nmap.org/download.html)
 * [Python3](https://www.python.org/downloads/)
+  * Install v3.8.x, when Installing check the [x] next to add Python to Path
   * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
 *Note:* Once [Python](https://www.python.org/downloads/) and
