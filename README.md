@@ -109,11 +109,11 @@ and `sslmap.py` **must** be added to the local environment path variable.
 
 The following packages are required to use **sslmap**:
 
-* <a href="https://nmap.org/download.html" target="_blank">Nmap</a>
-* <a href="https://www.python.org/downloads/" target="_blank">Python3</a>
-  * <a href="https://pypi.org/project/xmltodict3/" target="_blank">xmltodict3</a>
+* [Nmap](https://nmap.org/download.html)
+* [Python3](https://www.python.org/downloads/)
+  * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
-*Note:* Once <a href="https://www.python.org/downloads/" target="_blank">Python3</a>
-and <a href="https://nmap.org/download.html" target="_blank">Nmap</a> are installed,
-ensure the executable parent directories are added to the local environment path.
-The `sslmap.py` parent directory should also be added to the local environment path.
+*Note:* Once [Python](https://www.python.org/downloads/) and
+[Nmap](https://nmap.org/download.html) are installed, ensure the executable
+parent directories are added to the local environment path. The `sslmap.py`
+parent directory should also be added to the local environment path.
