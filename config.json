@@ -9,7 +9,7 @@
   *) DO NOT manually modify any values outside of the "options" object.
   *) All JSON values specified in this file will be evaluated at runtime,
      unless overridden by a conflicting command-line argument.
-  *) Comments defined inside of the JSON data ({...}) will NOT be restored.
+  *) Comments defined inside of the JSON data ({  }) will NOT be restored.
   *) JSON block comments (/*...) are allowed. Inline JSON comments (//...)
      should be avoided, as they may lead to runtime parsing errors.
 

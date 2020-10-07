@@ -1,0 +1,25 @@
+/*
+ SSLMap Scan Targets
+ ===================
+  URI: https:raw.githubusercontent.com/vandavey/sslmap/master/target.json
+
+ General Information
+ -------------------
+  *) To use the default options, DO NOT modify any objects in this file.
+  *) All targets specified in this file will be evaluated at runtime, unless
+     overridden in config.json or by a conflicting command-line argument.
+  *) Comments defined inside of the JSON data ({ }) will NOT be restored.
+  *) JSON block comments (/*...) are allowed. Inline JSON comments (//...)
+     should be avoided, as they may lead to runtime parsing errors.
+
+ Option Information
+ ------------------
+   target    <array>    Target host names or addresses to scan with Nmap
+
+ Option Example
+ --------------
+   "target": ["localhost", "10.0.0.1", "fake.address", "192.168.1.1"]
+*/
+{
+   "target": []
+}
