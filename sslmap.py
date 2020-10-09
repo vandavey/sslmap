@@ -16,7 +16,6 @@ from xmltodict3 import XmlTextToDict
 
 class LogHandler(object):
     """Class to handle error logging operations"""
-
     def __init__(self, path=(Path.cwd() / "errors.log")):
         global date_fmt
         handler = logging.FileHandler(path, "a")
@@ -62,7 +61,6 @@ class LogHandler(object):
 
 class HostInfo(object):
     """Class to store scan data specific to each target host"""
-
     def __init__(self, name_info, ip_info, stamps: tuple):
         name_type = type(name_info)
         if name_type is list:
