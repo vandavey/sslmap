@@ -11,14 +11,15 @@ from pathlib import Path
 from xmltodict3 import XmlTextToDict
 
 # TODO: Update README with new information
-# TODO: Test and debug scans that are resumed
+# TODO: Environment path instructions
 
 
 class LogHandler(object):
     """Class to handle error logging operations"""
-    def __init__(self, logger_path: Path):
+
+    def __init__(self, path=(Path.cwd() / "errors.log")):
         global date_fmt
-        handler = logging.FileHandler(logger_path, "a")
+        handler = logging.FileHandler(path, "a")
 
         # Set msg/date formats of error logger
         handler.setFormatter(logging.Formatter(
@@ -26,41 +27,42 @@ class LogHandler(object):
             datefmt=date_fmt
         ))
         # Initialize properties
-        self.FilePath = logger_path
+        self.FilePath = path
         self.Logger = logging.getLogger("errors")  # New logger
         self.Logger.addHandler(handler)  # Add log file handler
         self.Logger.setLevel(logging.ERROR)  # Only log errors
 
-    def _handle(self, msg: str, kill: bool, quiet: bool) -> None:
+    def _handle(self, err: str, kill: bool, quiet: bool) -> None:
         """Protected helper method. Call self.error/self.option to
         append info to the log file instead of this method."""
         if not quiet:
-            print(f"[x] {msg} (see errors.log for full details)")
+            print(f"[x] {err} (see errors.log for details)")
 
-        self.Logger.error(msg)  # Write to log file
+        self.Logger.error(err)  # Write to log file
         if kill:
             exit(1)  # Exit SSLMap
 
-    def option(self, opt: str, msg: str, quiet=False) -> None:
+    def option(self, opt: str, err: str, quiet=False) -> None:
         """Log invalid cmd-line/config option and exit SSLMap"""
         global parser
         if not quiet:
             print(f"usage: {parser.usage}")
 
-        self._handle(f"OPTION ({opt}): {msg}", True, quiet)
+        self._handle(f"OPTION ({opt}): {err}", True, quiet)
 
     def error(self, exc, close=True) -> None:
         """Log general error to file and (optionally) exit SSLMap"""
         if Exception in type(exc).mro():  # if python exception
-            msg = f"ERROR ({type(exc).__name__}): {exc.args[0]}"
+            err = f"ERROR ({type(exc).__name__}): {exc.args[0]}"
         else:
-            msg = f'ERROR ({exc[0]}): "{exc[1]}"'
+            err = f"ERROR ({exc[0]}): {exc[1]}"
 
-        self._handle(msg, close, quiet=False)
+        self._handle(err, close, quiet=False)
 
 
 class HostInfo(object):
     """Class to store scan data specific to each target host"""
+
     def __init__(self, name_info, ip_info, stamps: tuple):
         name_type = type(name_info)
         if name_type is list:
@@ -93,8 +95,8 @@ class HostInfo(object):
         """Format and return host info as CSV record entries.
         Each additional port adds an item to the list returned."""
         records = []
-        for port_num, strength in self.PortList:
-            records.append("|".join((
+        for (port_num, strength) in self.PortList:
+            records.append(",".join((
                 f'"{self.IPAddress}"',
                 f'"{port_num}"',
                 f'"{self.HostName}"',
@@ -113,6 +115,50 @@ def null(test_obj: object) -> bool:
     return test_obj is None
 
 
+def parse_json(json_path: Path, backup: bool) -> dict:
+    """Parse JSON data from file and return as dictionary"""
+    global js_data, file_bak
+    js_data = json_path.read_text()  # File data
+    if backup:
+        file_bak = str(js_data)  # Unmodified backup
+
+    # Remove all JSON block comments
+    if js_data.count("/*") > 0:
+        for c in range(js_data.count("/*")):
+            start = js_data.find("/*")
+            stop = js_data.find("*/") + len("*/")
+            if start > -1:
+                js_data = js_data[:start] + js_data[stop:]
+
+    # Remove inline JSON comments
+    if js_data.count("//") > 0:
+        for c in range(js_data.count("//")):
+            start = js_data.find("//")
+            stop = js_data.find("\n", start, -1) + len("\n")
+            if start > -1:
+                js_data = js_data[:start] + js_data[stop:]
+
+    # Initialize new dictionaries w/ JSON data
+    try:
+        return json.loads(js_data)  # Config options dict
+    except JSONDecodeError:
+        err = f"'{json_path.name}' contains invalid JSON data"
+        LogHandler().error(("JSONDecodeError", err))
+
+
+def load_targets(t_path: Path) -> list:
+    """Load JSON target dictionary from specified file path"""
+    global target
+    bad_ext = (t_path.suffix != ".json")
+    bad_len = (len(target) == 0)
+    bad_path = (not t_path.exists())
+
+    if True not in [bad_ext, bad_len, bad_path]:
+        return parse_json(t_path, False)["target"]
+    else:
+        return []
+
+
 def get_headers() -> dict:
     """Get CSV file header up/down hosts dictionary"""
     names = (
@@ -120,8 +166,8 @@ def get_headers() -> dict:
         '"OverallRating"', '"StartTime"', '"EndTime"',
     )
     return {
-        "up": "|".join(names),
-        "down": "|".join((*names[:4], *names[5:]))
+        "up": ",".join(names),
+        "down": ",".join((*names[:4], *names[5:]))
     }
 
 
@@ -135,11 +181,11 @@ def run_scan(targets: list, nm_args: tuple) -> list:
         nm_stats = None
         try:
             nm_stats = subprocess.run(
-                args=(*nm_args, nm_targ),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                encoding="utf-8"
+                args=(*nm_args, nm_targ),  # Nmap cmd-args
+                stdin=subprocess.PIPE,  # Nmap standard input
+                stdout=subprocess.PIPE,  # Nmap standard output
+                stderr=subprocess.PIPE,  # Nmap standard error
+                encoding="utf-8"  # Out text instead of bytes
             )
         except Exception as nm_ex:
             log.error(nm_ex, close=False)
@@ -203,7 +249,7 @@ def get_info(host_dict: dict) -> HostInfo:
                 elif script["@id"] == "ssl-enum-ciphers":
                     strength = lines[-1][-1]  # Last char of last line
 
-        # Append port number and cipher strength tuple
+        # Append tuple containing port info (Port, Strength)
         info.PortList.append((item["@portid"], strength))
     return info  # Return HostInfo object
 
@@ -227,54 +273,34 @@ parser.add_argument(
     default=(Path.cwd() / "config.json")
 )
 
-conf, opts, file_dict = (None, None, None)
+conf, opts, stats = (None, None, None)
+file_dict, js_data, incomplete = (None, None, [])
+
+date_fmt = "%Y/%m/%d %H:%M:%S"  # Date-time format
 raw_path = parser.parse_known_args()[0].config
 
-# Convert string path to Path object
+# Convert raw config path to Path object
 if null(raw_path):
     conf_path = (Path.cwd() / "config.json").resolve()
 else:
     conf_path = Path(raw_path).resolve()
+    if not conf_path.exists():
+        msg = f"Unable to locate file '{conf_path.name}'"
+        LogHandler().option("CONFIG", msg)
 
 # Use config options if file exists
 use_conf = conf_path.exists()
 file_bak, opts_bak, json_bak = (None, None, None)
 
 if use_conf:
-    f_data = conf_path.read_text()  # File data
-    file_bak = str(f_data)  # Config file backup
+    conf = parse_json(conf_path, True)  # Config dict
+    opts = conf["options"]  # Config options
 
-    # Remove all JSON block comments
-    if f_data.count("/*") > 0:
-        for c in range(f_data.count("/*")):
-            start = f_data.find("/*")
-            stop = f_data.find("*/") + len("*/")
-            if start > -1:
-                f_data = f_data[:start] + f_data[stop:]
-
-    # Remove inline JSON comments
-    if f_data.count("//") > 0:
-        for c in range(f_data.count("//")):
-            start = f_data.find("//")
-            stop = f_data.find("\n", start, -1) + len("\n")
-            if start > -1:
-                f_data = f_data[:start] + f_data[stop:]
-
-    # Initialize new dictionaries w/ JSON data
-    try:
-        conf = json.loads(f_data)
-        opts = conf["options"]  # Reference variable
-    except JSONDecodeError:
-        LogHandler(Path.cwd() / "errors.log").error((
-            "JSONDecodeError",
-            f"'{conf_path}' contains invalid JSON data"
-        ))
-
-    opts_bak = copy.deepcopy(opts)  # Options backup
-    json_bak = f_data[1:-1]  # JSON substring backup
+    opts_bak = copy.deepcopy(opts)  # Config options backup
+    json_bak = js_data[1:-1]  # Existing JSON substring backup
 
     # Combine file names and parent path
-    for key, val in opts["fileNames"].items():
+    for (key, val) in opts["fileNames"].items():
         if not null(opts["parent"]):
             full_path = Path(opts["parent"]) / val
         else:
@@ -282,7 +308,15 @@ if use_conf:
 
         # Update dictionary with absolute paths
         opts["fileNames"].update({key: full_path})
-    file_dict = opts["fileNames"]  # Reference variable
+
+    file_dict = opts["fileNames"]  # File name/path dict
+    stats = conf["lastRunStats"]  # Scan statistics
+
+    # Include scan targets that were interrupted
+    if opts["resume"] & (not stats["completed"]):
+        if stats["lastTarget"] != stats["lastTarget"][-1]:
+            index = stats["target"].index(stats["lastTarget"])
+            incomplete = stats["target"][index:]
 
 parser.add_argument(
     "TARGET", type=str, nargs="*",
@@ -302,18 +336,13 @@ parser.add_argument(
     default=(opts["ports"] if use_conf else "443,8443")
 )
 
-args = None
-date_fmt = "%Y/%m/%d %H:%M:%S"
-
 # Parse cmd-line arguments
+args = None
 try:
     args = parser.parse_args()
-except SystemExit:  # Log error before exit
-    LogHandler(Path.cwd() / "errors.log").option(
-        opt="UNKNOWN",
-        msg="Unknown argument was received",
-        quiet=True  # No custom console stdout
-    )
+except SystemExit:
+    msg = "Unrecognized argument was received"
+    LogHandler().option("UNKNOWN", msg, quiet=True)
 
 # Print help and exit
 if args.help:
@@ -338,7 +367,7 @@ else:
     parent = parent.resolve()
 
 # Dictionary to store CSV file targets
-if file_dict is None:
+if null(file_dict):
     dir_path = parent if parent.exists() else Path.cwd()
     file_dict = {
         "upCsv": (dir_path / "scan_up.csv"),
@@ -369,8 +398,17 @@ nm_params = (
 if __name__ == "__main__":
     if len(target) == 0:
         log.option("TARGET", "At least one value is required")
-    else:
-        conf["lastRunStats"].update({"target": target})
+
+    # Load targets from target JSON file
+    if use_conf & (opts["resume"]):
+        targ_path = Path(str(opts["target"][0])).resolve()
+        file_target = load_targets(targ_path)
+
+        # Include interrupted targets from prior scan
+        if targ_path.suffix != ".json":
+            target = [*incomplete, *target]
+        elif (len(target) == 0) & (len(file_target) > 0):
+            target = [*incomplete, *file_target]
 
     if null(ports):
         log.option("PORT", "An argument value is required")
@@ -378,22 +416,22 @@ if __name__ == "__main__":
     # Validate port(s) parsed from cmd-line
     for port in ports.split(","):
         if not port.isdigit():
-            log.option("PORT", f"{port} is not an integer")
+            log.option("PORT", f"'{port}' is not an integer")
         elif not (0 <= int(port) <= 65535):
-            log.option("PORT", f"Invalid port number {port}")
+            log.option("PORT", f"Invalid port number '{port}'")
 
     # Validate output directory file path
     if dump_csv & (not parent.exists()):
-        log.option("OUTPUT", f"Invalid parent path {parent}")
+        log.option("OUTPUT", f"Invalid parent path '{parent}'")
 
     # Locate Nmap executable file
     exec_path = shutil.which("nmap")
-    if exec_path is None:
+    if null(exec_path):
         log.error(("Nmap", "Unable to locate Nmap executable"))
 
     # Skip if CSV output target is console stdout
     if not dump_csv:
-        for key, path in file_dict.items():
+        for (key, f_path) in file_dict.items():
             if key == "upCsv":
                 header = headers["up"]
             elif key == "downCsv":
@@ -401,26 +439,14 @@ if __name__ == "__main__":
             else:
                 continue  # Skip error log
 
-            path.touch()  # Create file if not found
-            csv_lines = path.read_text().splitlines()
+            f_path.touch()  # Create file if not found
+            csv_lines = f_path.read_text().splitlines()
 
             # Add CSV field header to file if missing
             if len(csv_lines) == 0:
-                path.write_text(header + "\n")
+                f_path.write_text(header + "\n")
             elif csv_lines[0] != header:
-                path.write_text("\n".join((header, *csv_lines, "")))
-
-    # TODO: test and debug scans that are resumed
-    if use_conf:
-        last = conf["lastRunStats"]["lastTarget"]
-        prev_target = conf["lastRunStats"]["target"]
-
-        # Resume previous prior scan
-        if opts["resume"] & (not null(last)):
-            if len(prev_target) > 1:
-                target = prev_target[prev_target.index(last):]
-            else:
-                target = [*prev_target, target]
+                f_path.write_text("\n".join((header, *csv_lines, "")))
 
     print("[*] Beginning scan, this might take a while...")
 
@@ -429,7 +455,7 @@ if __name__ == "__main__":
 
     # Format and print CSV field names
     if dump_csv & (host_count > 0):
-        heading = headers["up"].replace('"', "")
+        heading = headers["up"].replace('"', "").replace(",", "|")
         heading = f"\n{heading}\n" + ("-" * len(heading))
         print(heading)
 
@@ -440,9 +466,9 @@ if __name__ == "__main__":
 
         for line in new_lines:
             file_path = None
-            fields = line.split("|")
+            fields = line.split(",")
             if dump_csv:
-                print(line.replace('"', ""))
+                print(line.replace('"', "").replace(",", "|"))
                 continue  # Skip to next iteration
 
             # Remove strength field from inactive hosts
@@ -454,12 +480,12 @@ if __name__ == "__main__":
 
             # Append host info to CSV file
             with file_path.open("a") as csv:
-                csv.write("|".join(fields) + "\n")
+                csv.write(",".join(fields) + "\n")
 
     # Update config scan statistics
     if use_conf:
-        stats = conf["lastRunStats"]  # Reference variable
         new_conf = {"title": "config", "options": opts_bak}
+        stats.update({"target": target})
 
         # Update scan completion information
         if stats["target"][-1] == stats["lastTarget"]:
@@ -471,9 +497,9 @@ if __name__ == "__main__":
         new_conf.update({"lastRunStats": stats})
         new_json = json.dumps(new_conf, indent=4)  # Output string
 
-        # Replace existing config JSON w/ new info
+        # Replace existing config JSON data w/ new info
         new_data = file_bak.replace(json_bak, new_json)
-        conf_path.write_text(new_data)  # Write data to file
+        conf_path.write_text(new_data)  # Overwrite file data
 
     exit_msg = "[*] SSL scan completed"
     banner = ["", exit_msg] if dump_csv else [exit_msg]

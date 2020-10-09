@@ -9,13 +9,14 @@
   *) DO NOT manually modify any values outside of the "options" object.
   *) All JSON values specified in this file will be evaluated at runtime,
      unless overridden by a conflicting command-line argument.
-  *) Comments defined inside of the JSON data ({  }) will NOT be restored.
+  *) If the "target" is a file path, be sure it is the first item in array.
+  *) Comments defined inside of the JSON data ({ }) will NOT be restored.
   *) JSON block comments (/*...) are allowed. Inline JSON comments (//...)
      should be avoided, as they may lead to runtime parsing errors.
 
  Option Information
  ------------------
-  target     <array>      Nmap scan target hosts or addresses
+  target     <array>      Nmap scan target hosts or file paths
   port       <string>     Target port(s) separated by commas (no spaces)
   resume     <boolean>    Resume scan from the last completed target
   parent     <string>     Parent directory for CSV files and error log
