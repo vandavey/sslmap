@@ -215,8 +215,8 @@ environment path (see the [installation guide](#installation-guide) and
 
 [//]: # (TODO: mention troubleshooting & config file resets)
 
-* Verify that all dependencies are satisfied, and that `sslmap.py`
-  is accessible through the environment path:
+* Use *PowerShell* to verify that all dependencies are satisfied
+  and that `sslmap.py` is accessible through the environment path:
 
     ```powershell
     if (-Not $(nmap.exe -V)) {
