@@ -39,19 +39,19 @@ All available **sslmap** command-line arguments are listed below:
 * Scan a single IPv4 address:
 
     ```powershell
-    sslmap.py 192.168.1.1
+    sslmap.py "192.168.1.1"
     ```
 
 * Scan an entire IPv4 address range:
   
     ```powershell
-    sslmap.py 192.168.1.0/24
+    sslmap.py "192.168.1.0/24"
     ```
 
 * Scan multiple target hosts at once:
 
     ```powershell
-    sslmap.py 192.168.1.1 10.0.0.53
+    sslmap.py "192.168.1.1" "10.0.0.53"
     ```
 
 ### Custom Scans
@@ -59,7 +59,7 @@ All available **sslmap** command-line arguments are listed below:
 * Specify custom target port(s):
 
     ```powershell
-    sslmap.py -p 80,443 192.168.1.1
+    sslmap.py -p 80,443 "192.168.1.1"
     ```
 
     For multiple ports, join each port with a comma (*no spaces*).
@@ -67,7 +67,7 @@ All available **sslmap** command-line arguments are listed below:
 * Write CSV data to custom file path:
 
     ```powershell
-    sslmap.py -o C:\scan_data.csv 192.168.1.1
+    sslmap.py -o "C:\scan_data.csv" "192.168.1.1"
     ```
 
     New data will be appended if file exists at `<OUTPUT>`.
@@ -118,7 +118,7 @@ The following packages are required to use **sslmap**:
 
 Once installed, ensure the executable parent directories exist on the
 environment path (see the [installation guide](#installation-guide) and
-[remarks](#remarks)).
+[miscellaneous](#miscellaneous)).
 
 ***
 
@@ -138,9 +138,9 @@ environment path (see the [installation guide](#installation-guide) and
    4) Click the button labeled *Environment Variables*.
    5) In the *User variables* section, highlight *Path* and click *Edit*.
    6) Click the *New* button in the *Edit environment variable* window.
-   7) Type the filepath to the parent directory that containing the executable.
-   8) Click *OK* to save the update values.
-   9) Click *OK* again to save changes to the local system registry.
+   7) Type the filepath of the parent directory that contains the executable.
+   8) Click *OK* to save the updated environment variables.
+   9) Click *OK* again to write the changes to the system registry.
 
 3) Verify system environment path executable access.
     * Display the local [Nmap](https://nmap.org/download.html) version:
@@ -211,7 +211,7 @@ environment path (see the [installation guide](#installation-guide) and
 
 ***
 
-## Remarks
+## Miscellaneous
 
 [//]: # (TODO: mention troubleshooting & config file resets)
 
