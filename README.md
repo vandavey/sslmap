@@ -135,7 +135,7 @@ installer script.
 #### Install Dependencies
 
 1) Download and install the dependencies listed in the
-   [project dependencies](#dependencies) section above.
+   [project dependencies](#dependencies) section.
 2) Add the [Python](https://www.python.org/downloads/) and
    [Nmap](https://nmap.org/download.html) executable parent directories to the
    system environment path.
