@@ -2,15 +2,21 @@
 
 Python3 - Scan network targets with Nmap to determine SSL cipher strengths.
 
+***
+
 ## Basic Usage
+
+The basic usage for SSLMap is described below:
 
 ```powershell
 sslmap.py [-h] [-c CONFIG] [-o OUTPUT] [-p PORT] TARGET
 ```
 
+***
+
 ## Available Arguments
 
-All available **sslmap** command-line arguments are listed below:
+All available SSLMap command-line arguments are listed below:
 
 | Arguments            | Type       | Description              | Defaults      |
 |:--------------------:|:----------:|:------------------------:|:-------------:|
@@ -78,56 +84,58 @@ All available **sslmap** command-line arguments are listed below:
     sslmap.py --output -
     ```
 
-    Only **sslmap** errors are logged when `<OUTPUT>` *equals* `-`.
+    Only SSLMap errors are logged when `<OUTPUT>` *equals* `-`.
 
 ***
 
-## Run as Task
+## Installation
 
-To run **sslmap** as an automated task, use the built-in *Windows Task Scheduler*.
+There are two methods available to install SSLMap and its
+[dependencies](#dependencies):
 
-1) Launch *Windows Task Scheduler* (taskschd.msc).
-2) Select *Create Task* from the *Actions* pane on the right.
-3) Navigate to the *General* tab of the window.
-    * Specify the task *Name*.
-    * Specify the task *Description* (optional).
-4) Navigate to the *Triggers* tab, then click *New*.
-    * Specify the desired scan scheduling options, then click *OK*.
-5) Navigate to the *Actions* tab and click *New*.
-    * Verify that the *Start a program* option is selected in the *Action* dropdown.
-    * In the *Program/script* field, specify the path to the system `python` executable.
-    * In the *Add arguments* field, add `sslmap.py` followed by any other run options.
-    * Specify the `sslmap.py` parent directory path in the *Start in* field.
-    * Click *OK* to confirm the *Action* options.
-6) Click *OK* again to save the task.
-
-In order for these steps to work as expected, the parent directories of
-[Python](https://www.python.org/downloads/), [Nmap](https://nmap.org/download.html),
-and `sslmap.py` **must** be added to the local environment path variable (see the
-[dependencies](#dependencies) section of the [installation guide](#installation-guide)).  
+1) [Automatic installation](#automatic-installation) (*recommended*)
+2) [Manual installation](#manual-installation)
 
 ***
 
-## Project Dependencies
+### Automatic Installation
 
-The following packages are required to use **sslmap**:
+To automatically install SSLMap and its required dependencies, use the PowerShell
+installer script.
 
-* [Nmap](https://nmap.org/download.html)
-* [Python3](https://www.python.org/downloads/)
-  * [xmltodict3](https://pypi.org/project/xmltodict3/)
+* Launch a *PowerShell* console, then copy and paste the following block into the console:
 
-Once installed, ensure the executable parent directories exist on the
-environment path (see the [installation guide](#installation-guide) and
-[miscellaneous](#miscellaneous)).
+    ```powershell
+    $uri = "https://raw.githubusercontent.com/vandavey/sslmap/master/install.ps1"
+    $httpResp = $null
+
+    # Try to download installer script
+    try {
+        $httpResp = Invoke-WebRequest $uri -Method "GET"
+    }
+    catch {
+        Write-Output "[x] $((Get-Error).Exception.Message)`n"
+        return
+    }
+
+    # Pass through pipeline to bypass execution policy
+    Write-Output $httpResp.Content | powershell.exe -NoProfile -
+    ```
+
+* Use the `ENTER` key to ensure that all lines are properly interpreted.
+
+* If the server response contains a *HTTP 200* status code, the install
+  process will begin. Otherwise, the connection error message will be
+  displayed prior to exiting.
 
 ***
 
-## Installation Guide
+### Manual Installation
 
-### Dependencies
+#### Install Dependencies
 
 1) Download and install the dependencies listed in the
-   [project dependencies](#project-dependencies) section above.
+   [project dependencies](#dependencies) section above.
 2) Add the [Python](https://www.python.org/downloads/) and
    [Nmap](https://nmap.org/download.html) executable parent directories to the
    system environment path.
@@ -149,7 +157,7 @@ environment path (see the [installation guide](#installation-guide) and
          nmap.exe -V
          ```
 
-        If the version is displayed, `nmap.exe` was successfully added.
+        If the version is displayed, `nmap.exe` was successfully installed.
 
     * Display the local [Python](https://www.python.org/downloads/) version:
 
@@ -157,11 +165,11 @@ environment path (see the [installation guide](#installation-guide) and
         python.exe -V
         ```
 
-        If the version is displayed, `python.exe` was successfully added.
+        If the version is displayed, `python.exe` was successfully installed.
 
-4) Install [XmlToDict3](https://pypi.org/project/xmltodict3/) using `pip`.
+4) Install [XmlToDict3](https://pypi.org/project/xmltodict3/) using *pip*.
     1) Launch a `powershell.exe` console window (running as administrator).
-    2) Ensure pip is updated before installing new module:
+    2) Ensure *pip* is updated before installing new module:
 
         ```powershell
        python.exe -m pip install -U pip
@@ -179,9 +187,9 @@ environment path (see the [installation guide](#installation-guide) and
        python.exe -m pip show xmlTodict3
         ```
 
-       If no warning message is displayed, the installation was successful.
+       If no warning message is displayed, `XmlToDict` was successfully installed.
 
-### Application
+#### Install SSLMap
 
 1) Use one of the following methods to clone the SSLMap repository.
     * Use the [git](https://git-scm.com/downloads) command-line application:
@@ -195,10 +203,9 @@ environment path (see the [installation guide](#installation-guide) and
       then extract the archived contents.
 
 2) Add the `sslmap.py` executable parent directory to the system environment
-   path (see the [dependencies](#dependencies) section of the
-   [installation guide](#installation-guide)).
+   path (described in step *2* of [install dependencies](#install-dependencies)).
 
-3) Verify that`sslmap.py` has been added to the environment path:
+3) Verify that `sslmap.py` has been added to the environment path:
    1) Launch a new `powershell.exe` console window.
    2) View the `sslmap.py` help menu by using the `--help` option:
 
@@ -206,41 +213,51 @@ environment path (see the [installation guide](#installation-guide) and
        sslmap.py --help
        ```
 
-       If the command executes successfully, `sslmap.py`
-       was successfully added to the environment path.
+       If the command executes successfully, `sslmap.py` was successfully
+       added to the environment path.
 
 ***
 
-## Miscellaneous
+## Dependencies
 
-[//]: # (TODO: mention troubleshooting & config file resets)
+The following packages are required to use SSLMap:
 
-* Use *PowerShell* to verify that all dependencies are satisfied
-  and that `sslmap.py` is accessible through the environment path:
+* [Nmap](https://nmap.org/download.html)
+* [Python3](https://www.python.org/downloads/)
+  * [xmltodict3](https://pypi.org/project/xmltodict3/)
 
-    ```powershell
-    if (-Not $(nmap.exe -V)) {
-        Write-Output "[x] Unable to locate nmap.exe"
-        return
-    }
+Once installed, ensure the executable parent directories exist on the
+environment path (see *step 2* of [install dependencies](#install-dependencies)).
 
-    if (-Not $(python.exe -V)) {
-        Write-Output "[x] Unable to locate python.exe"
-        return
-    }
+***
 
-    if (-Not $(python.exe -m pip show xmltodict3)) {
-        Write-Output "[x] Unable to locate pip module XmlToDict3"
-        return
-    }
+## Run as Task
 
-    if (-Not $(sslmap.py --help)) {
-        Write-Output "[x] Unable to locate sslmap.py"
-        return
-    }
+To run SSLMap as an automated task, use the built-in *Windows Task Scheduler*.
 
-    Write-Output "[*] All SSLMap dependencies installed successfully"
-    ```
+1) Launch *Windows Task Scheduler* (taskschd.msc).
+2) Select *Create Task* from the *Actions* pane on the right.
+3) Navigate to the *General* tab of the window.
+    * Specify the task *Name*.
+    * Specify the task *Description* (optional).
+4) Navigate to the *Triggers* tab, then click *New*.
+    * Specify the desired scan scheduling options, then click *OK*.
+5) Navigate to the *Actions* tab and click *New*.
+    * Verify that the *Start a program* option is selected in the *Action* dropdown.
+    * In the *Program/script* field, specify the path to the system `python` executable.
+    * In the *Add arguments* field, add `sslmap.py` followed by any other run options.
+    * Specify the `sslmap.py` parent directory path in the *Start in* field.
+    * Click *OK* to confirm the *Action* options.
+6) Click *OK* again to save the task.
 
-    If there are no errors or warnings displayed, all packages are
-    installed correctly.
+In order for these steps to work as expected, the parent directories of
+[Python](https://www.python.org/downloads/), [Nmap](https://nmap.org/download.html),
+and `sslmap.py` **must** be added to the local environment path variable (see
+*step 2* of [install dependencies](#install-dependencies)).
+
+***
+
+## Remarks
+
+* All instructions described in this file are intended for users
+  running a *Windows* flavored operating system.
