@@ -100,20 +100,20 @@ There are two methods available to install SSLMap and its
 
 ### Automatic Installation
 
-To automatically install SSLMap and its required dependencies, use the PowerShell
-installer script.
+To automatically install SSLMap and its required dependencies, use *PowerShell*
+to download and execute the `install.ps1` installer script
 
-* Launch a *PowerShell* console, then copy and paste the following block into the console:
+* Launch a *PowerShell* console, then copy and paste the following code block into
+  the console window:
 
     ```powershell
-    $httpResp = $null
     $uri = "https://raw.githubusercontent.com/vandavey/sslmap/master/install.ps1"
 
     try {
         # Download the installer script
         $httpResp = Invoke-WebRequest $uri -Method "GET"
 
-        # Pass through pipeline to bypass execution policy
+        # Pass script through pipeline to bypass execution policy
         Write-Output $httpResp.Content | powershell.exe -
     }
     catch {
@@ -121,7 +121,8 @@ installer script.
     }
     ```
 
-* Use the `ENTER` key to ensure that all lines are properly interpreted.
+* Use the `ENTER` key to ensure that all lines are properly interpreted
+  by *PowerShell*.
 
 * If the server response contains a *HTTP 200* status code, the install
   process will begin. Otherwise, the connection error message will be
