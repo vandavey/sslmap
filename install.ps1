@@ -14,7 +14,7 @@ function HandleError([string]$errMsg) {
     exit
 }
 
-$title = "SSLMap Installer"
+$title = "`nSSLMap Installer"
 Write-Output ($title + "`n" + ("-" * $title.Length))
 
 HandleError("The installer script is still in development")
