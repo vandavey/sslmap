@@ -4,27 +4,6 @@ Python3 - Scan network targets with Nmap to determine SSL cipher strengths.
 
 ***
 
-## Table of Contents
-
-1) [SSLMap](#sslmap)
-2) [Table of Contents](#table-of-contents)
-3) [Basic Usage](#basic-usage)
-4) [Available Arguments](#available-arguments)
-5) [Usage Examples](#usage-examples)
-    1) [Display Help](#display-help)
-    2) [Basic Scans](#basic-scans)
-    3) [Custom Scans](#custom-scans)
-6) [Installation](#installation)
-    1) [Automatic Installation](#automatic-installation)
-    2) [Manual Installation](#manual-installation)
-        1) [Install Dependencies](#install-dependencies)
-        1) [Install SSLMap](#install-sslmap)
-7) [Dependencies](#dependencies)
-8) [Run as Task](#run-as-task)
-9) [Remarks](#remarks)
-
-***
-
 ## Basic Usage
 
 The basic usage for SSLMap is described below:
@@ -122,7 +101,7 @@ There are two methods available to install SSLMap and its
 ### Automatic Installation
 
 To automatically install SSLMap and its required dependencies, use *PowerShell*
-to download and execute the `install.ps1` installer script.
+to download and execute the `install.ps1` installer script
 
 * Launch a *PowerShell* console, then copy and paste the following code block into
   the console window:
@@ -160,7 +139,7 @@ to download and execute the `install.ps1` installer script.
 2) Add the [Python](https://www.python.org/downloads/) and
    [Nmap](https://nmap.org/download.html) executable parent directories to the
    system environment path.
-   1) Use the `WINDOWS+R` keyboard shortcut to launch a new *Run* dialog instance.
+   1) Use the *Windows+R* keyboard shortcut to launch a new *Run* dialog instance.
    2) In the *Run* dialog, type `sysdm.cpl` to launch the *System Properties*
       control panel window.
    3) Switch to the *Advanced* tab at the top of the *System Properties* window.
