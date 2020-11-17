@@ -106,27 +106,26 @@ installer script.
 * Launch a *PowerShell* console, then copy and paste the following block into the console:
 
     ```powershell
-    $uri = "https://raw.githubusercontent.com/vandavey/sslmap/master/install.ps1"
     $httpResp = $null
+    $uri = "https://raw.githubusercontent.com/vandavey/sslmap/master/install.ps1"
 
-    # Try to download installer script
     try {
+        # Download the installer script
         $httpResp = Invoke-WebRequest $uri -Method "GET"
+
+        # Pass through pipeline to bypass execution policy
+        Write-Output $httpResp.Content | powershell.exe -
     }
     catch {
         Write-Output "[x] $((Get-Error).Exception.Message)`n"
-        return
     }
-
-    # Pass through pipeline to bypass execution policy
-    Write-Output $httpResp.Content | powershell.exe -NoProfile -
     ```
 
 * Use the `ENTER` key to ensure that all lines are properly interpreted.
 
 * If the server response contains a *HTTP 200* status code, the install
   process will begin. Otherwise, the connection error message will be
-  displayed prior to exiting.
+  displayed.
 
 ***
 
