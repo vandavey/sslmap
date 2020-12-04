@@ -30,13 +30,11 @@ $deps = @(
 # Download/install missing dependencies
 foreach ($dep in $deps) {
     Write-Output "[*] Checking for dependency '$($dep.Exe)'..."
-
-    # Check if dependency is installed
     & $dep.Exe -V 2>$1 | Out-Null
 
     # Check if last command was successful
     if ($?) {
-        Write-Output "[*] Dependency '$($dep.Exe)' already satisfied"
+        Write-Output "[*] Dependency '$($dep.Exe)' already satisfied."
         continue
     }
     $httpHead = @{Uri = $dep.Uri; Method = "HEAD"}
@@ -46,15 +44,15 @@ foreach ($dep in $deps) {
         if ((Invoke-WebRequest @httpHead).StatusCode -ne 200) {
             HandleError("Unable to connect to '$($dep.Uri)'")
         }
-        Write-Output "[*] Downloading installer for '$($dep.Exe)'"
 
+        Write-Output "[*] Downloading installer for '$($dep.Exe)'..."
         Invoke-WebRequest $dep.Uri -Method "GET" -OutFile $dep.OutPath
 
         # Run downloaded installer
-        if (Test-Path $dep.OutPath) {
+        if (-not (Test-Path $dep.OutPath)) {
             HandleError("Unable to locate path '$($dep.OutPath)'")
         }
-        Write-Output "[*] Launching installer for '$($dep.Exe)'"
+        Write-Output "[*] Launching installer for '$($dep.Exe)...'"
 
         Start-Process $dep.OutPath -Verb "RunAs" -Wait
         & $dep.Exe -V 2>$1 | Out-Null  # Check if installed
@@ -66,9 +64,9 @@ foreach ($dep in $deps) {
     catch {
         HandleError((Get-Error).Exception.Message)
     }
-    
 }
 
+# TODO: check that python is on path
 # Pip package installation
 try {
     Write-Output "[*] Installing required pip packages..."
@@ -80,8 +78,8 @@ catch {
 }
 
 Write-Output @"
-[*] Dependency 'XMLToDict3' now satisfied
-[*] All dependencies are now satisfied
+[*] Dependency 'XMLToDict3' now satisfied.
+[*] All dependencies are now satisfied!
 [*] Cloning SSLMap GitHub repository...
 "@
 
@@ -121,4 +119,4 @@ catch {
 # TODO: add outpath to environment path
 # TODO: test sslmap install by passing -h argument
 
-Write-Output "[*] SSLmap and its dependencies were successfully installed!`n"
+Write-Output "[*] Installation completed successfully!`n"
