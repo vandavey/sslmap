@@ -16,7 +16,7 @@ Python3 - Scan network targets with Nmap to determine SSL cipher strengths.
     1) [Automatic Installation](#automatic-installation)
     2) [Manual Installation](#manual-installation)
         1) [Install Dependencies](#install-dependencies)
-        1) [Install SSLMap](#install-sslmap)
+        2) [Install SSLMap](#install-sslmap)
 7) [Dependencies](#dependencies)
 8) [Run as Task](#run-as-task)
 9) [Remarks](#remarks)
