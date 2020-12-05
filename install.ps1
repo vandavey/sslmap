@@ -66,7 +66,6 @@ foreach ($dep in $deps) {
     }
 }
 
-# TODO: check that python is on path
 # Pip package installation
 try {
     Write-Output "[*] Installing required pip packages..."
@@ -106,6 +105,7 @@ try {
     if (-not (Test-Path $outPath)) {
         HandleError("Error occurred unpacking writing to $outPath")
     }
+    Write-Output "[*] Removing temporary files..."
 
     # Remove unnecessary files and directories
     Move-Item "$outPath\sslmap-master\*" $outPath -Force
@@ -116,7 +116,19 @@ catch {
     HandleError((Get-Error).Exception.Message)
 }
 
-# TODO: add outpath to environment path
-# TODO: test sslmap install by passing -h argument
+# Add SSLMap parent path if missing
+$varTarget = [EnvironmentVariableTarget]::User
+$newPath = [Environment]::GetEnvironmentVariable("PATH", $varTarget)
+
+# Add to environment path if not found
+if (-not $newPath.Contains($outPath)) {
+    Write-Host "[*] Adding SSLMap parent directory to path..."
+
+    if ($newPath[-1] -ne ";") {
+        $newPath += ";"
+    }
+    $newPath += $outPath
+    [Environment]::SetEnvironmentVariable("PATH", $newPath, $varTarget)
+}
 
 Write-Output "[*] Installation completed successfully!`n"
