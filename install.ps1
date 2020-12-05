@@ -13,7 +13,7 @@ function HandleError([string]$ErrorMsg) {
 $title = "SSLMap Installer"
 Write-Output ("`n$title`n" + ("-" * $title.Length))
 
-# SExecutable dependencies
+# Executable dependencies
 $deps = @(
     [PSCustomObject]@{ # Nmap
         Exe = "nmap.exe"
@@ -122,7 +122,7 @@ $newPath = [Environment]::GetEnvironmentVariable("PATH", $varTarget)
 
 # Add to environment path if not found
 if (-not $newPath.Contains($outPath)) {
-    Write-Host "[*] Adding SSLMap parent directory to path..."
+    Write-Host "[*] Adding SSLMap location to environment path..."
 
     if ($newPath[-1] -ne ";") {
         $newPath += ";"
