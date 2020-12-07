@@ -107,7 +107,7 @@ try {
     }
     Write-Output "[*] Removing temporary files..."
 
-    # Remove unnecessary files and directories
+    # Remove temp files and directories
     Move-Item "$outPath\sslmap-master\*" $outPath -Force
     Remove-Item "$outPath\sslmap-master" 
     Remove-Item $zipPath -ErrorAction SilentlyContinue
@@ -131,4 +131,11 @@ if (-not $newPath.Contains($outPath)) {
     [Environment]::SetEnvironmentVariable("PATH", $newPath, $varTarget)
 }
 
+$files = @("errors.log", "scan_up.csv", "scan_down.csv", "target.json")
+Write-Output "[*] Adding configuration files..."
+
+# Create support and config files
+foreach ($file in $files) {
+    New-Item "$outPath\$file" -Force 2>$1 | Out-Null
+}
 Write-Output "[*] Installation completed successfully!`n"
