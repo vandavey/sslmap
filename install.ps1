@@ -13,7 +13,7 @@ function HandleError([string]$ErrorMsg) {
 $title = "SSLMap Installer"
 Write-Output ("`n$title`n" + ("-" * $title.Length))
 
-# SExecutable dependencies
+# Executable dependencies
 $deps = @(
     [PSCustomObject]@{ # Nmap
         Exe = "nmap.exe"
@@ -107,7 +107,7 @@ try {
     }
     Write-Output "[*] Removing temporary files..."
 
-    # Remove unnecessary files and directories
+    # Remove temp files and directories
     Move-Item "$outPath\sslmap-master\*" $outPath -Force
     Remove-Item "$outPath\sslmap-master" 
     Remove-Item $zipPath -ErrorAction SilentlyContinue
@@ -122,7 +122,7 @@ $newPath = [Environment]::GetEnvironmentVariable("PATH", $varTarget)
 
 # Add to environment path if not found
 if (-not $newPath.Contains($outPath)) {
-    Write-Host "[*] Adding SSLMap parent directory to path..."
+    Write-Host "[*] Adding SSLMap location to environment path..."
 
     if ($newPath[-1] -ne ";") {
         $newPath += ";"
@@ -131,4 +131,11 @@ if (-not $newPath.Contains($outPath)) {
     [Environment]::SetEnvironmentVariable("PATH", $newPath, $varTarget)
 }
 
+$files = @("errors.log", "scan_up.csv", "scan_down.csv")
+Write-Output "[*] Adding configuration files..."
+
+# Create support and config files
+foreach ($file in $files) {
+    New-Item "$outPath\$file" -Force 2>$1 | Out-Null
+}
 Write-Output "[*] Installation completed successfully!`n"
