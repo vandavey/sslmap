@@ -131,7 +131,7 @@ if (-not $newPath.Contains($outPath)) {
     [Environment]::SetEnvironmentVariable("PATH", $newPath, $varTarget)
 }
 
-$files = @("errors.log", "scan_up.csv", "scan_down.csv", "target.json")
+$files = @("errors.log", "scan_up.csv", "scan_down.csv")
 Write-Output "[*] Adding configuration files..."
 
 # Create support and config files
