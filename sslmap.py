@@ -398,7 +398,7 @@ if __name__ == "__main__":
 
     # Validate target config/arguments
     if len(target) == 1:
-        targ_path = Path(str(opts["target"][0])).resolve()
+        targ_path = Path(str(target[0])).resolve()
 
         # Load json target file
         if target[0].endswith(".json"):
